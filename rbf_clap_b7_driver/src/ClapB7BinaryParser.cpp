@@ -125,6 +125,11 @@ void ClapB7Parser(ClapB7Controller* p_Controller, const uint8_t* p_Data, uint16_
 					p_Controller->rawData[p_Controller->dataIndex++] = p_Data[i];
 					p_Controller->status = CLAP_B7_HEADER_LENGTH;
 				}
+                else if(THIRD_SYNCH_GPGGA == p_Data[i])
+                {
+                    p_Controller->rawData[p_Controller->dataIndex++] = p_Data[i];
+                    p_Controller->status = CLAP_B7_HEADER_ADD_AGRIC;
+                }
 				else if(FIRST_SYNCH == p_Data[i])
 				{
 					p_Controller->dataIndex = 0;
@@ -157,6 +162,39 @@ void ClapB7Parser(ClapB7Controller* p_Controller, const uint8_t* p_Data, uint16_
 				}
 				break;
 			}
+            //AGRIC Header
+            case CLAP_B7_HEADER_ADD_AGRIC :
+            {
+                p_Controller->rawData[p_Controller->dataIndex++] = p_Data[i];
+                if(p_Controller->dataIndex >= HEADER_LEN_AGRIC)
+                {
+                    memcpy((uint8_t*)&(p_Controller->header_Agric), (p_Controller->rawData), sizeof(ClapB7Header_Agric));
+                    p_Controller->status = CLAP_B7_DATA_ADD_AGRIC;
+                }
+                break;
+            }
+                //AGRIC Data
+            case CLAP_B7_DATA_ADD_AGRIC :
+            {
+                p_Controller->rawData[p_Controller->dataIndex++] = p_Data[i];
+                if(p_Controller->dataIndex >= p_Controller->header_Agric.msgLen + HEADER_LEN_AGRIC + CRC_LEN)
+                {
+                    uint32_t crc;
+                    memcpy((uint8_t *)&(crc), (uint8_t*)(p_Controller->rawData + p_Controller->header_Agric.msgLen + HEADER_LEN_AGRIC), sizeof(uint32_t));
+                    if(CalculateCRC32(p_Controller->rawData, (int32_t)(p_Controller->dataIndex - CRC_LEN)) == crc)
+                    {
+                        freq_agric++;
+                        memcpy(&p_Controller->clap_ArgicData, (p_Controller->rawData + HEADER_LEN_AGRIC), sizeof(ClapB7_AgricMsg_));
+                        p_Controller->Parser();
+                    }
+                    else{
+                        //scanned bytes don't contain meaningful data
+                    }
+                    p_Controller->dataIndex = 0;
+                    p_Controller->status = SYNCH1_CONTROL;
+                }
+                break;
+            }
 
 			case CLAP_B7_DATA_ADD :
 			{

@@ -13,6 +13,7 @@ using rclcpp::ParameterValue;
 
 int freq_rawimu = 0;
 int freq_inspvax = 0;
+int freq_agric = 0;
 
 ClapB7Driver::ClapB7Driver()
     : Node("rbf_clap_b7_driver"),
@@ -121,9 +122,11 @@ void ClapB7Driver::timer_callback()
 
   printf("freq_rawimu_hz = %d\n", freq_rawimu);
   printf("freq_inspvax_hz = %d\n", freq_inspvax);
+  printf("freq_agric_hz = %d\n", freq_agric);
 
   freq_rawimu = 0;
   freq_inspvax = 0;
+    freq_agric = 0;
 }
 
 void ClapB7Driver::pub_ClapB7Data()
@@ -177,7 +180,15 @@ void ClapB7Driver::pub_ClapB7Data()
 
   pub_clap_data_->publish(msg_clap_data);
 
-  publish_standart_msgs();
+  if( (clapB7Controller.clapData.ins_status == INS_INACTIVE) || (clapB7Controller.clapData.ins_status == INS_ALIGNING) )
+  {
+      publish_standart_msgs_agric();
+  }
+  else
+  {
+      publish_standart_msgs();
+  }
+
 }
 
 void ClapB7Driver::publish_standart_msgs()
@@ -247,6 +258,31 @@ void ClapB7Driver::publish_standart_msgs()
 
   pub_imu_->publish(msg_imu);
   pub_nav_sat_fix_->publish(msg_nav_sat_fix);
+}
+
+void ClapB7Driver::publish_standart_msgs_agric()
+{
+    sensor_msgs::msg::NavSatFix msg_nav_sat_fix;
+
+    // GNSS NavSatFix Message
+    msg_nav_sat_fix.header.set__frame_id(static_cast<std::string>("gnss"));
+    msg_nav_sat_fix.header.stamp.set__sec(static_cast<int32_t>(this->get_clock()->now().seconds()));
+    msg_nav_sat_fix.header.stamp.set__nanosec(static_cast<uint32_t>(this->get_clock()->now().nanoseconds()));
+
+    msg_nav_sat_fix.status.set__status(0);
+
+    msg_nav_sat_fix.set__latitude(static_cast<double>(clapB7Controller.clap_ArgicData.lat));
+    msg_nav_sat_fix.set__longitude(static_cast<double>(clapB7Controller.clap_ArgicData.lon));
+    msg_nav_sat_fix.set__altitude(static_cast<double>(clapB7Controller.clap_ArgicData.Het));
+
+    std::array<double, 9> pos_cov{0};
+    pos_cov[0] = clapB7Controller.clap_ArgicData.lat;
+    pos_cov[4] = clapB7Controller.clap_ArgicData.lon;
+    pos_cov[8] = clapB7Controller.clap_ArgicData.Het;
+
+    msg_nav_sat_fix.set__position_covariance(pos_cov);
+
+    pub_nav_sat_fix_->publish(msg_nav_sat_fix);
 }
 
 int ClapB7Driver::NTRIP_client_start()

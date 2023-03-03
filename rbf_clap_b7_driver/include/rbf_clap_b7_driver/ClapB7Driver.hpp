@@ -37,8 +37,12 @@
 #define GYRO_SCALE_FACTOR (2160 / (pow(2, 31)))
 #define HZ_TO_SECOND ( 100 )
 
+#define INS_INACTIVE    0
+#define INS_ALIGNING    1
+
 extern int freq_rawimu;
 extern int freq_inspvax;
+extern int freq_agric;
 
 class ClapB7Driver : public rclcpp::Node
 {
@@ -57,7 +61,7 @@ private:
     void pub_ClapB7Data();
     int NTRIP_client_start();
     void publish_standart_msgs();
-
+    void publish_standart_msgs_agric();
 
     std::string clap_data_topic_;
     std::string imu_topic_;
