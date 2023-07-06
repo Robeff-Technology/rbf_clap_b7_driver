@@ -224,6 +224,8 @@ ClapB7Driver::ClapB7Driver()
       timer_{this->create_wall_timer(
         1000ms, std::bind(&ClapB7Driver::timer_callback, this))},
 
+      tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
+
       tf_broadcaster_odom_{nullptr}
 
 {
@@ -434,7 +436,7 @@ void ClapB7Driver::pub_ins_data() {
   publish_std_imu();
   publish_twist();
   publish_orientation();
-  //publish_odom();
+  publish_odom();
 
   pub_clap_ins_->publish(msg_ins_data);
 
@@ -768,13 +770,18 @@ void ClapB7Driver::publish_odom(){
   nav_msgs::msg::Odometry msg_odom;
 
   std::string utm_zone;
-  geometry_msgs::msg::TransformStamped transform;
+  auto trans = geometry_msgs::msg::TransformStamped();
+  trans.header.stamp = this->get_clock()->now();
+  trans.header.frame_id = "odom";
+  trans.child_frame_id = "base_link";
 
   sensor_msgs::msg::NavSatFix nav_sat_fix_msg;
 
   sensor_msgs::msg::NavSatFix nav_sat_fix_origin;
 
   GNSSStat gnss_stat;
+
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "784");
 
   nav_sat_fix_origin.longitude =  local_origin_longitude_;
   nav_sat_fix_origin.latitude = local_origin_latitude_;
@@ -786,14 +793,24 @@ void ClapB7Driver::publish_odom(){
 
   gnss_stat = NavSatFix2LocalCartesianUTM(nav_sat_fix_msg,nav_sat_fix_origin);
 
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "796");
 
+  trans.transform.translation.x = 0.0;
+  trans.transform.translation.y = 2.0;
+  trans.transform.translation.z = 0.0;
+  trans.transform.rotation.x = 0.0;
+  trans.transform.rotation.y = 0.0;
+  trans.transform.rotation.z = 0.0;
+  trans.transform.rotation.w = 1.0;	
 
 
   // Fill in the message.
-  msg_odom.header.stamp = header_.stamp;
+ 
 
-  msg_odom.header.set__frame_id("gnss_ins_fix_frame");
-  msg_odom.set__child_frame_id(static_cast<std::string>(gnss_frame_));
+  msg_odom.header.frame_id = "odom";
+  msg_odom.child_frame_id = "base link";
+
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "813");
 
 
   msg_odom.pose.pose.position.x = gnss_stat.x;
@@ -806,12 +823,13 @@ void ClapB7Driver::publish_odom(){
   msg_odom.pose.covariance[3*6 + 3] = clapB7Controller.clapData.std_dev_roll * clapB7Controller.clapData.std_dev_roll;
   msg_odom.pose.covariance[4*6 + 4] = clapB7Controller.clapData.std_dev_pitch * clapB7Controller.clapData.std_dev_pitch;
   msg_odom.pose.covariance[5*6 + 5] = clapB7Controller.clapData.std_dev_azimuth * clapB7Controller.clapData.std_dev_azimuth;
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "826");
 
   //The twist message gives the linear and angular velocity relative to the frame defined in child_frame_id
   //Lİnear x-y-z hızlari yanlis olabilir
-  msg_odom.twist.twist.linear.x      = clapB7Controller.clap_ArgicData.Velocity_E;
-  msg_odom.twist.twist.linear.y      = clapB7Controller.clap_ArgicData.Velocity_N;
-  msg_odom.twist.twist.linear.z      = clapB7Controller.clap_ArgicData.Velocity_U;
+  msg_odom.twist.twist.linear.x      = 0;
+  msg_odom.twist.twist.linear.y      = 0;
+  msg_odom.twist.twist.linear.z      = 0;
   msg_odom.twist.twist.angular.x     = clapB7Controller.clap_RawimuMsgs.x_gyro_output;
   msg_odom.twist.twist.angular.y     = clapB7Controller.clap_RawimuMsgs.y_gyro_output;
   msg_odom.twist.twist.angular.z     = clapB7Controller.clap_RawimuMsgs.z_gyro_output;
@@ -821,12 +839,17 @@ void ClapB7Driver::publish_odom(){
   msg_odom.twist.covariance[3*6 + 3] = 0;
   msg_odom.twist.covariance[4*6 + 4] = 0;
   msg_odom.twist.covariance[5*6 + 5] = 0;
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "842");
 
-  publish_transform(msg_odom.header.frame_id, "gnss_ins_base_frame", msg_odom.pose.pose,transform);
+
   pub_odom_->publish(msg_odom);
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "846");
+  tf_broadcaster_->sendTransform(trans);
+  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "848");
+
 
 }
-
+/*
 
 void ClapB7Driver::publish_transform(
   const std::string &ref_parent_frame_id, 
@@ -854,6 +877,7 @@ void ClapB7Driver::publish_transform(
 
 }
 
+*/
 
 void ClapB7Driver::rtcmCallback(const mavros_msgs::msg::RTCM::ConstSharedPtr msg_rtcm) {
   //RCLCPP_INFO(this->get_logger(),"Received Data: %d",msg_rtcm->data.data());
