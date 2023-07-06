@@ -224,7 +224,7 @@ ClapB7Driver::ClapB7Driver()
       timer_{this->create_wall_timer(
         1000ms, std::bind(&ClapB7Driver::timer_callback, this))},
 
-      tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
+    
 
       tf_broadcaster_odom_{nullptr}
 
@@ -844,7 +844,7 @@ void ClapB7Driver::publish_odom(){
 
   pub_odom_->publish(msg_odom);
   RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "846");
-  tf_broadcaster_->sendTransform(trans);
+  tf_broadcaster_odom_->sendTransform(trans);
   RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "848");
 
 
