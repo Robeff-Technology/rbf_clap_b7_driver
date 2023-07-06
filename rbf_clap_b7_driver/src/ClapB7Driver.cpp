@@ -343,7 +343,14 @@ void ClapB7Driver::pub_imu_data()
   msg_imu_data.set__x_gyro_output(static_cast<double>(clapB7Controller.clap_RawimuMsgs.x_gyro_output * GYRO_SCALE_FACTOR* HZ_TO_SECOND));
 
   pub_clap_imu_->publish(msg_imu_data);
- 
+
+  RCLCPP_INFO(this->get_logger(), "odoma girmeden once");
+
+  publish_odom();
+
+  RCLCPP_INFO(this->get_logger(), "odoma girdikten sonra");
+
+
 }
 
 void ClapB7Driver::pub_gnsspos_data(){
@@ -436,7 +443,6 @@ void ClapB7Driver::pub_ins_data() {
   publish_std_imu();
   publish_twist();
   publish_orientation();
-  publish_odom();
 
   pub_clap_ins_->publish(msg_ins_data);
 
@@ -766,8 +772,8 @@ void ClapB7Driver::publish_orientation()
 }
 
 void ClapB7Driver::publish_odom(){
-
-  nav_msgs::msg::Odometry msg_odom;
+    RCLCPP_INFO(this->get_logger(), "odoma girdi");
+    nav_msgs::msg::Odometry msg_odom;
 
   std::string utm_zone;
   auto trans = geometry_msgs::msg::TransformStamped();
@@ -779,21 +785,24 @@ void ClapB7Driver::publish_odom(){
 
   sensor_msgs::msg::NavSatFix nav_sat_fix_origin;
 
-  GNSSStat gnss_stat;
+ // GNSSStat gnss_stat;
 
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "784");
+  RCLCPP_INFO(this->get_logger(), "1");
 
   nav_sat_fix_origin.longitude =  local_origin_longitude_;
   nav_sat_fix_origin.latitude = local_origin_latitude_;
   nav_sat_fix_origin.altitude = local_origin_altitude_;
+  RCLCPP_INFO(this->get_logger(), "2");
 
-  nav_sat_fix_msg.longitude =  clapB7Controller.clapData.longitude;
+    nav_sat_fix_msg.longitude =  clapB7Controller.clapData.longitude;
   nav_sat_fix_msg.latitude = clapB7Controller.clapData.latitude;
   nav_sat_fix_msg.altitude = clapB7Controller.clapData.height;
+    RCLCPP_INFO(this->get_logger(), "2.5");
 
-  gnss_stat = NavSatFix2LocalCartesianUTM(nav_sat_fix_msg,nav_sat_fix_origin);
 
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "796");
+    //gnss_stat = NavSatFix2LocalCartesianUTM(nav_sat_fix_msg,nav_sat_fix_origin);
+
+    RCLCPP_INFO(this->get_logger(), "3");
 
   trans.transform.translation.x = 0.0;
   trans.transform.translation.y = 2.0;
@@ -810,12 +819,12 @@ void ClapB7Driver::publish_odom(){
   msg_odom.header.frame_id = "odom";
   msg_odom.child_frame_id = "base link";
 
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "813");
+    RCLCPP_INFO(this->get_logger(), "4");
 
 
-  msg_odom.pose.pose.position.x = gnss_stat.x;
-  msg_odom.pose.pose.position.y = gnss_stat.y;
-  msg_odom.pose.pose.position.z = gnss_stat.z;
+  msg_odom.pose.pose.position.x = 0;
+  msg_odom.pose.pose.position.y = 0;
+  msg_odom.pose.pose.position.z = 0;
 
   msg_odom.pose.covariance[0*6 + 0] = 0.001;
   msg_odom.pose.covariance[1*6 + 1] = 0.001;
@@ -823,7 +832,7 @@ void ClapB7Driver::publish_odom(){
   msg_odom.pose.covariance[3*6 + 3] = clapB7Controller.clapData.std_dev_roll * clapB7Controller.clapData.std_dev_roll;
   msg_odom.pose.covariance[4*6 + 4] = clapB7Controller.clapData.std_dev_pitch * clapB7Controller.clapData.std_dev_pitch;
   msg_odom.pose.covariance[5*6 + 5] = clapB7Controller.clapData.std_dev_azimuth * clapB7Controller.clapData.std_dev_azimuth;
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "826");
+    RCLCPP_INFO(this->get_logger(), "5");
 
   //The twist message gives the linear and angular velocity relative to the frame defined in child_frame_id
   //Lİnear x-y-z hızlari yanlis olabilir
@@ -839,13 +848,13 @@ void ClapB7Driver::publish_odom(){
   msg_odom.twist.covariance[3*6 + 3] = 0;
   msg_odom.twist.covariance[4*6 + 4] = 0;
   msg_odom.twist.covariance[5*6 + 5] = 0;
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "842");
+    RCLCPP_INFO(this->get_logger(), "6");
 
 
   pub_odom_->publish(msg_odom);
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "846");
+    RCLCPP_INFO(this->get_logger(), "7");
   tf_broadcaster_odom_->sendTransform(trans);
-  RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "848");
+    RCLCPP_INFO(this->get_logger(), "8");
 
 
 }
