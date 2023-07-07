@@ -68,6 +68,10 @@ ClapB7Driver::ClapB7Driver()
                                       ParameterValue("ntrip/rtcm"),
                                       ParameterDescriptor{})
                                       .get<std::string>()},
+      ekf_pose_topic_{this->declare_parameter("ekf_pose",
+                                          ParameterValue("/localization/pose_estimator/pose"),
+                                          ParameterDescriptor{})
+                          .get<std::string>()},
 
       raw_nav_sat_fix_topic_{this->declare_parameter(
                                    "raw_nav_sat_fix_topic",
@@ -199,7 +203,8 @@ ClapB7Driver::ClapB7Driver()
       sub_rtcm_{create_subscription<mavros_msgs::msg::RTCM>(
                   rtcm_topic_,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::rtcmCallback, this, std::placeholders::_1))},
 
-
+      sub_pose_{create_subscription<geometry_msgs::msg::Pose>(
+              ekf_pose_topic_ ,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::ekfPoseCallback, this, std::placeholders::_1))},
 
       coordinate_system_{static_cast<int>(this->declare_parameter(
                                                 "coordinate_system",
@@ -343,12 +348,9 @@ void ClapB7Driver::pub_imu_data()
   msg_imu_data.set__x_gyro_output(static_cast<double>(clapB7Controller.clap_RawimuMsgs.x_gyro_output * GYRO_SCALE_FACTOR* HZ_TO_SECOND));
 
   pub_clap_imu_->publish(msg_imu_data);
-
-  RCLCPP_INFO(this->get_logger(), "odoma girmeden once");
-
   publish_odom();
 
-  RCLCPP_INFO(this->get_logger(), "odoma girdikten sonra");
+
 
 
 }
@@ -772,8 +774,8 @@ void ClapB7Driver::publish_orientation()
 }
 
 void ClapB7Driver::publish_odom(){
-    RCLCPP_INFO(this->get_logger(), "odoma girdi");
-    nav_msgs::msg::Odometry msg_odom;
+
+  nav_msgs::msg::Odometry msg_odom;
 
   std::string utm_zone;
   auto trans = geometry_msgs::msg::TransformStamped();
@@ -785,25 +787,16 @@ void ClapB7Driver::publish_odom(){
 
   sensor_msgs::msg::NavSatFix nav_sat_fix_origin;
 
- // GNSSStat gnss_stat;
 
-  RCLCPP_INFO(this->get_logger(), "1");
 
   nav_sat_fix_origin.longitude =  local_origin_longitude_;
   nav_sat_fix_origin.latitude = local_origin_latitude_;
   nav_sat_fix_origin.altitude = local_origin_altitude_;
-  RCLCPP_INFO(this->get_logger(), "2");
 
-    nav_sat_fix_msg.longitude =  clapB7Controller.clapData.longitude;
+  nav_sat_fix_msg.longitude =  clapB7Controller.clapData.longitude;
   nav_sat_fix_msg.latitude = clapB7Controller.clapData.latitude;
   nav_sat_fix_msg.altitude = clapB7Controller.clapData.height;
-    RCLCPP_INFO(this->get_logger(), "2.5");
-
-
-    //gnss_stat = NavSatFix2LocalCartesianUTM(nav_sat_fix_msg,nav_sat_fix_origin);
-
-    RCLCPP_INFO(this->get_logger(), "3");
-
+  
   trans.transform.translation.x = 0.0;
   trans.transform.translation.y = 2.0;
   trans.transform.translation.z = 0.0;
@@ -813,18 +806,14 @@ void ClapB7Driver::publish_odom(){
   trans.transform.rotation.w = 1.0;	
 
 
-  // Fill in the message.
- 
+  // Fill in the message
 
   msg_odom.header.frame_id = "odom";
   msg_odom.child_frame_id = "base link";
 
-    RCLCPP_INFO(this->get_logger(), "4");
-
-
-  msg_odom.pose.pose.position.x = 0;
-  msg_odom.pose.pose.position.y = 0;
-  msg_odom.pose.pose.position.z = 0;
+  msg_odom.pose.pose.position.x = ekf_pose_.position.x;
+  msg_odom.pose.pose.position.y = ekf_pose_.position.y;
+  msg_odom.pose.pose.position.z = ekf_pose_.position.z;
 
   msg_odom.pose.covariance[0*6 + 0] = 0.001;
   msg_odom.pose.covariance[1*6 + 1] = 0.001;
@@ -832,7 +821,6 @@ void ClapB7Driver::publish_odom(){
   msg_odom.pose.covariance[3*6 + 3] = clapB7Controller.clapData.std_dev_roll * clapB7Controller.clapData.std_dev_roll;
   msg_odom.pose.covariance[4*6 + 4] = clapB7Controller.clapData.std_dev_pitch * clapB7Controller.clapData.std_dev_pitch;
   msg_odom.pose.covariance[5*6 + 5] = clapB7Controller.clapData.std_dev_azimuth * clapB7Controller.clapData.std_dev_azimuth;
-    RCLCPP_INFO(this->get_logger(), "5");
 
   //The twist message gives the linear and angular velocity relative to the frame defined in child_frame_id
   //Lİnear x-y-z hızlari yanlis olabilir
@@ -848,8 +836,6 @@ void ClapB7Driver::publish_odom(){
   msg_odom.twist.covariance[3*6 + 3] = 0;
   msg_odom.twist.covariance[4*6 + 4] = 0;
   msg_odom.twist.covariance[5*6 + 5] = 0;
-    RCLCPP_INFO(this->get_logger(), "6");
-
 
   pub_odom_->publish(msg_odom);
     RCLCPP_INFO(this->get_logger(), "7");
@@ -858,35 +844,12 @@ void ClapB7Driver::publish_odom(){
 
 
 }
-/*
-
-void ClapB7Driver::publish_transform(
-  const std::string &ref_parent_frame_id, 
-  const std::string &ref_child_frame_id,
-  const geometry_msgs::msg::Pose &ref_pose, 
-  geometry_msgs::msg::TransformStamped &ref_transform){
-
-
-  ref_transform.header.stamp = header_.stamp;
-
-  ref_transform.header.frame_id = ref_parent_frame_id;
-  ref_transform.child_frame_id = ref_child_frame_id;
-
-  ref_transform.transform.translation.set__x(ref_pose.position.x);
-  ref_transform.transform.translation.set__y(ref_pose.position.y);
-  ref_transform.transform.translation.set__z(ref_pose.position.z);
-
-  ref_transform.transform.rotation.set__x(ref_pose.orientation.x);
-  ref_transform.transform.rotation.set__y(ref_pose.orientation.y);
-  ref_transform.transform.rotation.set__z(ref_pose.orientation.z);
-  ref_transform.transform.rotation.set__w(ref_pose.orientation.w);
-
-  tf_broadcaster_odom_->sendTransform(ref_transform);
-
+void ClapB7Driver::ekfPoseCallback(const geometry_msgs::msg::Pose::ConstSharedPtr msg)
+{
+     geometry_msgs::msg::Pose ekf_pose_;
+     ekf_pose_ = *msg ;
 
 }
-
-*/
 
 void ClapB7Driver::rtcmCallback(const mavros_msgs::msg::RTCM::ConstSharedPtr msg_rtcm) {
   //RCLCPP_INFO(this->get_logger(),"Received Data: %d",msg_rtcm->data.data());
@@ -956,6 +919,7 @@ void ClapB7Driver::publish_raw_nav_sat_fix(){
   pub_raw_nav_sat_fix_->publish(msg_raw_nav_sat_fix);
 
 }
+
 
 void ClapB7Driver::publish_raw_imu()
 {

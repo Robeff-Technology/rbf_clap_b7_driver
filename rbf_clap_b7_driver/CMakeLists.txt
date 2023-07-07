@@ -78,6 +78,7 @@ ament_target_dependencies(rbf_clap_b7_driver_exe
         std_msgs
         rbf_clap_b7_msgs
         sensor_msgs
+        geometry_msgs
         nav_msgs
         nmea_msgs
         tf2
@@ -86,6 +87,7 @@ ament_target_dependencies(rbf_clap_b7_driver_exe
         tf2_msgs
         tf2_geometry_msgs
         mavros_msgs
+
         )
 
 install(TARGETS
