@@ -69,7 +69,7 @@ ClapB7Driver::ClapB7Driver()
                                       ParameterDescriptor{})
                                       .get<std::string>()},
       ekf_pose_topic_{this->declare_parameter("ekf_pose",
-                                          ParameterValue("/localization/pose_estimator/pose"),
+                                          ParameterValue("/sensing/gnss/pose"),
                                           ParameterDescriptor{})
                           .get<std::string>()},
 
@@ -203,7 +203,7 @@ ClapB7Driver::ClapB7Driver()
       sub_rtcm_{create_subscription<mavros_msgs::msg::RTCM>(
                   rtcm_topic_,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::rtcmCallback, this, std::placeholders::_1))},
 
-      sub_pose_{create_subscription<geometry_msgs::msg::Pose>(
+      sub_pose_{create_subscription<geometry_msgs::msg::PoseStamped>(
               ekf_pose_topic_ ,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::ekfPoseCallback, this, std::placeholders::_1))},
 
       coordinate_system_{static_cast<int>(this->declare_parameter(
@@ -787,7 +787,7 @@ void ClapB7Driver::publish_odom(){
   sensor_msgs::msg::NavSatFix nav_sat_fix_msg;
 
   sensor_msgs::msg::NavSatFix nav_sat_fix_origin;
-  
+
   nav_sat_fix_origin.longitude =  local_origin_longitude_;
   nav_sat_fix_origin.latitude = local_origin_latitude_;
   nav_sat_fix_origin.altitude = local_origin_altitude_;
@@ -802,9 +802,9 @@ void ClapB7Driver::publish_odom(){
   msg_odom.header.frame_id = "odom";
   msg_odom.child_frame_id = "base link";
 
-  msg_odom.pose.pose.position.x = ekf_pose_.position.x;
-  msg_odom.pose.pose.position.y = ekf_pose_.position.y;
-  msg_odom.pose.pose.position.z = ekf_pose_.position.z;
+  msg_odom.pose.pose.position.x = ekf_pose_.pose.position.x;
+  msg_odom.pose.pose.position.y = ekf_pose_.pose.position.y;
+  msg_odom.pose.pose.position.z = ekf_pose_.pose.position.z;
 
   msg_odom.pose.covariance[0*6 + 0] = 0.001;
   msg_odom.pose.covariance[1*6 + 1] = 0.001;
@@ -853,9 +853,9 @@ void ClapB7Driver::publish_odom(){
 
 
 }
-void ClapB7Driver::ekfPoseCallback(const geometry_msgs::msg::Pose::ConstSharedPtr msg)
+void ClapB7Driver::ekfPoseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 {
-     geometry_msgs::msg::Pose ekf_pose_;
+     geometry_msgs::msg::PoseStamped ekf_pose_;
      ekf_pose_ = *msg ;
 
 }

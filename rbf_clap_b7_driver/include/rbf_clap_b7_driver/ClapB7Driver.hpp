@@ -27,6 +27,7 @@
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include <tf2/LinearMath/Quaternion.h>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
@@ -155,7 +156,7 @@ private:
 
     void rtcmCallback(const mavros_msgs::msg::RTCM::ConstSharedPtr msg_rtcm);
 
-    void ekfPoseCallback(const geometry_msgs::msg::Pose::ConstSharedPtr pose);
+    void ekfPoseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr pose);
 
     double EllipsoidHeight2OrthometricHeight(
       const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg);
@@ -178,7 +179,7 @@ private:
     std::string raw_nav_sat_fix_topic_;
     std::string raw_imu_topic_;
 
-    geometry_msgs::msg::Pose ekf_pose_;
+    geometry_msgs::msg::PoseStamped ekf_pose_;
 
 
     //NTRIP Parameters
@@ -225,7 +226,7 @@ private:
 
     //RTK Subscriber
     rclcpp::Subscription<mavros_msgs::msg::RTCM>::SharedPtr sub_rtcm_;
-    rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr sub_pose_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_pose_;
 
 
     ClapB7Controller clapB7Controller;
