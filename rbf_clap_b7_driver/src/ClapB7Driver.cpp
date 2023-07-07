@@ -775,6 +775,7 @@ void ClapB7Driver::publish_orientation()
 
 void ClapB7Driver::publish_odom(){
 
+  double total_speed_linear = 0;
   nav_msgs::msg::Odometry msg_odom;
 
   std::string utm_zone;
@@ -786,9 +787,7 @@ void ClapB7Driver::publish_odom(){
   sensor_msgs::msg::NavSatFix nav_sat_fix_msg;
 
   sensor_msgs::msg::NavSatFix nav_sat_fix_origin;
-
-
-
+  
   nav_sat_fix_origin.longitude =  local_origin_longitude_;
   nav_sat_fix_origin.latitude = local_origin_latitude_;
   nav_sat_fix_origin.altitude = local_origin_altitude_;
@@ -796,14 +795,6 @@ void ClapB7Driver::publish_odom(){
   nav_sat_fix_msg.longitude =  clapB7Controller.clapData.longitude;
   nav_sat_fix_msg.latitude = clapB7Controller.clapData.latitude;
   nav_sat_fix_msg.altitude = clapB7Controller.clapData.height;
-  
-  trans.transform.translation.x = 0.0;
-  trans.transform.translation.y = 2.0;
-  trans.transform.translation.z = 0.0;
-  trans.transform.rotation.x = 0.0;
-  trans.transform.rotation.y = 0.0;
-  trans.transform.rotation.z = 0.0;
-  trans.transform.rotation.w = 1.0;	
 
 
   // Fill in the message
@@ -822,11 +813,21 @@ void ClapB7Driver::publish_odom(){
   msg_odom.pose.covariance[4*6 + 4] = clapB7Controller.clapData.std_dev_pitch * clapB7Controller.clapData.std_dev_pitch;
   msg_odom.pose.covariance[5*6 + 5] = clapB7Controller.clapData.std_dev_azimuth * clapB7Controller.clapData.std_dev_azimuth;
 
+  total_speed_linear = clapB7Controller.clap_BestGnssVelData.horizontal_speed;
+
+    if(cos(deg2rad(clapB7Controller.clap_UniHeadingData.heading - clapB7Controller.clap_BestGnssVelData.track_angle)) < 0)
+    {
+        msg_odom.twist.twist.linear.x = -total_speed_linear;
+    }
+    else
+    {
+        msg_odom.twist.twist.linear.x = total_speed_linear;
+    }
+
+  msg_odom.twist.twist.linear.y = 0;
+  msg_odom.twist.twist.linear.z = 0;
   //The twist message gives the linear and angular velocity relative to the frame defined in child_frame_id
   //Lİnear x-y-z hızlari yanlis olabilir
-  msg_odom.twist.twist.linear.x      = 0;
-  msg_odom.twist.twist.linear.y      = 0;
-  msg_odom.twist.twist.linear.z      = 0;
   msg_odom.twist.twist.angular.x     = clapB7Controller.clap_RawimuMsgs.x_gyro_output;
   msg_odom.twist.twist.angular.y     = clapB7Controller.clap_RawimuMsgs.y_gyro_output;
   msg_odom.twist.twist.angular.z     = clapB7Controller.clap_RawimuMsgs.z_gyro_output;
@@ -837,10 +838,18 @@ void ClapB7Driver::publish_odom(){
   msg_odom.twist.covariance[4*6 + 4] = 0;
   msg_odom.twist.covariance[5*6 + 5] = 0;
 
+  trans.transform.translation.x = msg_odom.pose.pose.position.x;
+  trans.transform.translation.y = msg_odom.pose.pose.position.y;
+  trans.transform.translation.z = msg_odom.pose.pose.position.z;
+  trans.transform.rotation.x = msg_odom.pose.pose.orientation.x;
+  trans.transform.rotation.y = msg_odom.pose.pose.orientation.y;
+  trans.transform.rotation.z = msg_odom.pose.pose.orientation.z;
+  trans.transform.rotation.w = msg_odom.pose.pose.orientation.w;
+
   pub_odom_->publish(msg_odom);
-    RCLCPP_INFO(this->get_logger(), "7");
+
   tf_broadcaster_odom_->sendTransform(trans);
-    RCLCPP_INFO(this->get_logger(), "8");
+
 
 
 }
