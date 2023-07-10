@@ -825,10 +825,10 @@ void ClapB7Driver::publish_odom(){
   msg_odom.twist.twist.linear.z = 0;
   //The twist message gives the linear and angular velocity relative to the frame defined in child_frame_id
   //Lİnear x-y-z hızlari yanlis olabilir
-  msg_odom.twist.twist.angular.x     = clapB7Controller.clap_RawimuMsgs.x_gyro_output;
-  msg_odom.twist.twist.angular.y     = clapB7Controller.clap_RawimuMsgs.y_gyro_output;
-  msg_odom.twist.twist.angular.z     = clapB7Controller.clap_RawimuMsgs.z_gyro_output;
-  msg_odom.twist.covariance[0*6 + 0] = clapB7Controller.clapData.std_dev_east_velocity * clapB7Controller.clapData.std_dev_east_velocity;
+  msg_odom.twist.twist.angular.x     = clapB7Controller.clap_RawimuMsgs.x_gyro_output * (M_PI / 180) * GYRO_SCALE_FACTOR * HZ_TO_SECOND;
+  msg_odom.twist.twist.angular.y     = clapB7Controller.clap_RawimuMsgs.y_gyro_output * (M_PI / 180) * GYRO_SCALE_FACTOR * HZ_TO_SECOND;
+  msg_odom.twist.twist.angular.z     = clapB7Controller.clap_RawimuMsgs.z_gyro_output * (M_PI / 180) * GYRO_SCALE_FACTOR * HZ_TO_SECOND;
+  msg_odom.twist.covariance[0*6 + 0] = clapB7Controller.clapData.std_dev_east_velocity * clapB7Controller.clapData.std_dev_east_velocity ;
   msg_odom.twist.covariance[1*6 + 1] = clapB7Controller.clapData.std_dev_north_velocity * clapB7Controller.clapData.std_dev_north_velocity;
   msg_odom.twist.covariance[2*6 + 2] = clapB7Controller.clapData.std_dev_up_velocity * clapB7Controller.clapData.std_dev_up_velocity;
   msg_odom.twist.covariance[3*6 + 3] = 0;
@@ -854,7 +854,7 @@ void ClapB7Driver::ekfPoseCallback(const geometry_msgs::msg::PoseStamped::ConstS
 {
 
      ekf_pose_ = *msg ;
-     RCLCPP_INFO(this->get_logger(), "pose data for odom : %d", ekf_pose_);
+
 
 }
 
