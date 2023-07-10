@@ -175,7 +175,6 @@ private:
     std::string twist_topic_;
     std::string odom_topic_;
     std::string rtcm_topic_;
-    std::string ekf_pose_topic_;
     std::string raw_nav_sat_fix_topic_;
     std::string raw_imu_topic_;
 

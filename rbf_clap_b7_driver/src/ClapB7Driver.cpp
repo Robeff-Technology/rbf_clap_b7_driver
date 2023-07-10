@@ -68,10 +68,6 @@ ClapB7Driver::ClapB7Driver()
                                       ParameterValue("ntrip/rtcm"),
                                       ParameterDescriptor{})
                                       .get<std::string>()},
-      ekf_pose_topic_{this->declare_parameter("ekf_pose",
-                                          ParameterValue("/sensing/gnss/pose"),
-                                          ParameterDescriptor{})
-                          .get<std::string>()},
 
       raw_nav_sat_fix_topic_{this->declare_parameter(
                                    "raw_nav_sat_fix_topic",
@@ -204,7 +200,7 @@ ClapB7Driver::ClapB7Driver()
                   rtcm_topic_,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::rtcmCallback, this, std::placeholders::_1))},
 
       sub_pose_{create_subscription<geometry_msgs::msg::PoseStamped>(
-              ekf_pose_topic_ ,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::ekfPoseCallback, this, std::placeholders::_1))},
+                "/sensing/gnss/pose" ,rclcpp::QoS{ 1 },std::bind(&ClapB7Driver::ekfPoseCallback, this, std::placeholders::_1))},
 
       coordinate_system_{static_cast<int>(this->declare_parameter(
                                                 "coordinate_system",
@@ -778,6 +774,7 @@ void ClapB7Driver::publish_odom(){
   double total_speed_linear = 0;
   nav_msgs::msg::Odometry msg_odom;
 
+
   std::string utm_zone;
   auto trans = geometry_msgs::msg::TransformStamped();
   trans.header.stamp = this->get_clock()->now();
@@ -855,8 +852,9 @@ void ClapB7Driver::publish_odom(){
 }
 void ClapB7Driver::ekfPoseCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 {
-     geometry_msgs::msg::PoseStamped ekf_pose_;
+
      ekf_pose_ = *msg ;
+     RCLCPP_INFO(this->get_logger(), "pose data for odom : %d", ekf_pose_);
 
 }
 
